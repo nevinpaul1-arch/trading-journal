@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Journal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #131720;
+      --surface2: #1a2030;
+      --border: #1e2840;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --green: #22c55e;
+      --green-dim: #14532d;
+      --red: #ef4444;
+      --red-dim: #450a0a;
+      --yellow: #f59e0b;
+      --blue: #60a5fa;
+      --purple: #a78bfa;
+      --orange: #fb923c;
+      --teal: #2dd4bf;
+    }
+
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px 16px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h1 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--blue);
+    }
+
+    .sidebar-header p {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .date-list { padding: 8px 0; flex: 1; }
+
+    .date-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 12px;
+      border-left: 2px solid transparent;
+      transition: all 0.1s;
+    }
+
+    .date-item:hover { color: var(--text); background: var(--surface2); }
+
+    .date-item.active {
+      color: var(--blue);
+      border-left-color: var(--blue);
+      background: rgba(96, 165, 250, 0.08);
+    }
+
+    .main {
+      flex: 1;
+      padding: 28px 32px;
+      max-width: 1000px;
+    }
+
+    /* ── Day header ── */
+    .day-header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .day-date {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .day-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .meta-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .meta-tag span { color: var(--text); }
+
+    .day-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+
+    .stat { text-align: center; }
+    .stat-val { font-size: 20px; font-weight: 700; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-val.green { color: var(--green); }
+    .stat-val.red { color: var(--red); }
+    .stat-val.blue { color: var(--blue); }
+
+    .day-note {
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--yellow);
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      border-radius: 4px;
+      padding: 6px 10px;
+    }
+
+    /* ── Gate rules ── */
+    .gate-section { margin-bottom: 20px; }
+
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .gate-rules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .gate-rule {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      background: rgba(30, 40, 64, 0.6);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'SF Mono', monospace;
+    }
+
+    /* ── Candidates ── */
+    .candidates-section { margin-bottom: 16px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--border);
+      overflow: hidden;
+    }
+
+    .card.trade { border-left-color: var(--green); }
+    .card.skip { border-left-color: var(--red); opacity: 0.75; }
+    .card.pregate { border-left-color: var(--yellow); }
+    .card.close-failed { border-left-color: var(--orange); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px 8px;
+      flex-wrap: wrap;
+    }
+
+    .symbol {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      min-width: 60px;
+    }
+
+    .decision-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .badge-trade { background: var(--green-dim); color: var(--green); }
+    .badge-skip { background: var(--red-dim); color: var(--red); }
+    .badge-pregate { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .badge-close-failed { background: rgba(251,146,60,0.15); color: var(--orange); }
+
+    .catalyst-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--purple);
+    }
+
+    .fade-risk-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--red);
+    }
+
+    .card-summary {
+      padding: 0 14px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .card-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.02);
+      border-top: 1px solid var(--border);
+    }
+
+    .metric {
+      margin-right: 18px;
+      margin-bottom: 2px;
+    }
+
+    .metric-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .metric-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .metric-val.highlight { color: var(--teal); }
+    .metric-val.warn { color: var(--yellow); }
+
+    .card-trade {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 10px 14px;
+      background: rgba(34, 197, 94, 0.04);
+      border-top: 1px solid rgba(34, 197, 94, 0.15);
+      align-items: center;
+    }
+
+    .trade-block { }
+
+    .trade-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .trade-val {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .entry-val { color: var(--blue); }
+    .stop-val { color: var(--red); }
+    .target-val { color: var(--green); }
+    .rr-val { color: var(--purple); }
+    .qty-val { color: var(--text); }
+
+    .pnl-block {
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .pnl-val { font-size: 16px; font-weight: 700; }
+    .pnl-pos { color: var(--green); }
+    .pnl-neg { color: var(--red); }
+    .pnl-open { color: var(--muted); font-size: 11px; font-weight: normal; }
+
+    .skip-reason {
+      padding: 5px 14px 8px;
+      font-size: 10px;
+      color: var(--red);
+      opacity: 0.8;
+    }
+
+    .pregate-note {
+      padding: 3px 14px 6px;
+      font-size: 10px;
+      color: var(--yellow);
+      opacity: 0.85;
+    }
+
+    /* ── Empty / loading ── */
+    .loading {
+      color: var(--muted);
+      padding: 40px;
+      text-align: center;
+    }
+
+    .divider {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin: 16px 0 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1>Journal</h1>
+      <p>Gap Fade · Paper</p>
+    </div>
+    <div class="date-list" id="dateList"></div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main" id="main">
+    <div class="loading">Select a date</div>
+  </main>
+
+</div>
+
+<script>
+// Password gate — change the hash below to lock with a different password.
+// Generate a new hash: https://emn178.github.io/online-tools/sha256.html
+// Current password: tradingclub
+const PASSWORD_HASH = 'c2ef97feeffdef945622cb589a394c1304b61333d2879a688b564db8a1516a8a';
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkAuth() {
+  const stored = sessionStorage.getItem('tj_auth');
+  if (stored === PASSWORD_HASH) return true;
+
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+      position:fixed;inset:0;background:#0d0f14;display:flex;
+      flex-direction:column;align-items:center;justify-content:center;
+      font-family:'SF Mono','Fira Code',monospace;z-index:9999;
+    `;
+    overlay.innerHTML = `
+      <div style="color:#60a5fa;font-size:13px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:24px">Trading Journal</div>
+      <input id="pwInput" type="password" placeholder="password"
+        style="background:#131720;border:1px solid #1e2840;color:#e2e8f0;padding:10px 16px;
+               border-radius:5px;font-family:inherit;font-size:13px;outline:none;width:220px;text-align:center;">
+      <div id="pwError" style="color:#ef4444;font-size:11px;margin-top:10px;height:16px;"></div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#pwInput');
+    const error = overlay.querySelector('#pwError');
+    input.focus();
+    input.addEventListener('keydown', async e => {
+      if (e.key !== 'Enter') return;
+      const hash = await sha256(input.value);
+      if (hash === PASSWORD_HASH) {
+        sessionStorage.setItem('tj_auth', hash);
+        overlay.remove();
+        resolve(true);
+      } else {
+        error.textContent = 'incorrect password';
+        input.value = '';
+      }
+    });
+  });
+}
+
+const BASE = './';
+
+async function loadManifest() {
+  const r = await fetch(BASE + 'manifest.json');
+  const data = await r.json();
+  return data.dates;
+}
+
+async function loadDay(date) {
+  const r = await fetch(BASE + 'trades/' + date + '.json');
+  return await r.json();
+}
+
+function fmtNum(v, decimals = 2) {
+  if (v == null) return '—';
+  return Number(v).toFixed(decimals);
+}
+
+function fmtVol(v) {
+  if (v == null) return '—';
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+  return String(v);
+}
+
+function fmtPnl(trade) {
+  if (!trade) return '';
+  if (trade.pnl != null) {
+    const cls = trade.pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+    const sign = trade.pnl >= 0 ? '+' : '';
+    return `<div class="pnl-block"><div class="trade-label">P&amp;L</div><div class="pnl-val ${cls}">${sign}$${fmtNum(trade.pnl, 2)}</div></div>`;
+  }
+  if (trade.status === 'close_failed') {
+    return `<div class="pnl-block"><div class="pnl-val" style="color:var(--orange)">close failed</div></div>`;
+  }
+  return `<div class="pnl-block"><span class="pnl-open">open</span></div>`;
+}
+
+function catalystColor(type) {
+  const good = ['earnings_beat', 'partnership_contract', 'guidance', 'spinoff', 'deal'];
+  const bad = ['analyst_action', 'ma_rumor', 'dilution_offering', 'no_clear_catalyst'];
+  if (good.includes(type)) return 'color:var(--teal)';
+  if (bad.includes(type)) return 'color:var(--red)';
+  return '';
+}
+
+function renderCard(c) {
+  const isTradeCard = c.decision === 'TRADE';
+  const isPreGate = c.note && c.note.includes('[pre-gate]');
+  const isCloseFailed = c.trade && c.trade.status === 'close_failed';
+
+  let cardClass = 'card';
+  let badgeClass = '';
+  let badgeLabel = c.decision;
+
+  if (isTradeCard && isPreGate) {
+    cardClass += ' pregate';
+    badgeClass = 'badge-pregate';
+    badgeLabel = 'PRE-GATE';
+  } else if (isTradeCard && isCloseFailed) {
+    cardClass += ' close-failed';
+    badgeClass = 'badge-close-failed';
+  } else if (isTradeCard) {
+    cardClass += ' trade';
+    badgeClass = 'badge-trade';
+  } else {
+    cardClass += ' skip';
+    badgeClass = 'badge-skip';
+  }
+
+  const metricsHtml = [
+    { label: 'Gap%', val: c.gap_pct != null ? fmtNum(c.gap_pct) + '%' : '—', cls: c.gap_pct > 15 ? 'warn' : '' },
+    { label: 'Float', val: c.float_m != null ? fmtNum(c.float_m, 1) + 'M' : '—' },
+    { label: 'Float Rot%', val: c.float_rotation_pct != null ? fmtNum(c.float_rotation_pct) + '%' : '—' },
+    { label: 'Gap/ATR', val: fmtNum(c.gap_vs_atr) },
+    { label: 'Pre Vol', val: fmtVol(c.premarket_volume), cls: 'highlight' },
+  ].map(m => `
+    <div class="metric">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-val ${m.cls || ''}">${m.val}</div>
+    </div>
+  `).join('');
+
+  let tradeHtml = '';
+  if (isTradeCard && c.trade) {
+    const t = c.trade;
+    const dir = (t.direction || 'long').toUpperCase();
+    tradeHtml = `
+    <div class="card-trade">
+      <div class="trade-block"><div class="trade-label">Dir</div><div class="trade-val" style="color:var(--blue)">${dir}</div></div>
+      <div class="trade-block"><div class="trade-label">Entry</div><div class="trade-val entry-val">$${fmtNum(t.entry)}</div></div>
+      <div class="trade-block"><div class="trade-label">Stop</div><div class="trade-val stop-val">$${fmtNum(t.stop)}</div></div>
+      <div class="trade-block"><div class="trade-label">Target</div><div class="trade-val target-val">$${fmtNum(t.target)}</div></div>
+      <div class="trade-block"><div class="trade-label">Qty</div><div class="trade-val qty-val">${t.qty}</div></div>
+      <div class="trade-block"><div class="trade-label">R:R</div><div class="trade-val rr-val">1:${fmtNum(t.rr_ratio)}</div></div>
+      ${fmtPnl(t)}
+    </div>`;
+    if (t.close_note) {
+      tradeHtml += `<div class="pregate-note">⚠ ${t.close_note}</div>`;
+    }
+  }
+
+  const skipHtml = c.skip_reason
+    ? `<div class="skip-reason">✕ ${c.skip_reason}</div>`
+    : '';
+
+  const preGateHtml = c.note && c.note.includes('[pre-gate]')
+    ? `<div class="pregate-note">⚡ ${c.note.replace('[pre-gate] ', '')}</div>`
+    : '';
+
+  const fadeRiskHtml = c.fade_risk
+    ? `<span class="fade-risk-badge">fade_risk</span>`
+    : '';
+
+  const catStyle = catalystColor(c.catalyst_type);
+
+  return `
+  <div class="${cardClass}">
+    <div class="card-header">
+      <span class="symbol">${c.symbol}</span>
+      <span class="decision-badge ${badgeClass}">${badgeLabel}</span>
+      <span class="catalyst-badge" style="${catStyle}">${c.catalyst_type || 'unknown'}</span>
+      ${fadeRiskHtml}
+    </div>
+    <div class="card-summary">${c.catalyst_summary || ''}</div>
+    <div class="card-metrics">${metricsHtml}</div>
+    ${skipHtml}
+    ${preGateHtml}
+    ${tradeHtml}
+  </div>`;
+}
+
+function renderDay(day) {
+  const candidates = day.candidates || [];
+  const traded = candidates.filter(c => c.decision === 'TRADE');
+  const gatePass = traded.filter(c => !c.fade_risk);
+  const gateSkipped = candidates.filter(c => c.decision === 'SKIP').length;
+
+  const dateObj = new Date(day.date + 'T12:00:00Z');
+  const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  const closedTrades = candidates.filter(c => c.trade && c.trade.pnl != null);
+  const totalPnl = closedTrades.length > 0
+    ? closedTrades.reduce((sum, c) => sum + c.trade.pnl, 0)
+    : null;
+
+  // Total % = sum(P&L) / sum(capital deployed = entry * qty)
+  const totalCapital = closedTrades.reduce((sum, c) => sum + (c.trade.entry * c.trade.qty), 0);
+  const totalPct = (totalPnl != null && totalCapital > 0)
+    ? (totalPnl / totalCapital * 100)
+    : null;
+
+  const wins = closedTrades.filter(c => c.trade.pnl > 0).length;
+  const losses = closedTrades.filter(c => c.trade.pnl <= 0).length;
+
+  const statsHtml = `
+    <div class="day-stats">
+      <div class="stat"><div class="stat-val blue">${candidates.length}</div><div class="stat-label">Scanned</div></div>
+      <div class="stat"><div class="stat-val green">${gatePass.length}</div><div class="stat-label">Traded</div></div>
+      <div class="stat"><div class="stat-val red">${gateSkipped}</div><div class="stat-label">Skipped</div></div>
+      ${totalPnl != null ? `<div class="stat"><div class="stat-val ${totalPnl >= 0 ? 'green' : 'red'}">${totalPnl >= 0 ? '+' : ''}$${fmtNum(totalPnl)}</div><div class="stat-label">Day P&L</div></div>` : ''}
+      ${totalPct != null ? `<div class="stat"><div class="stat-val ${totalPct >= 0 ? 'green' : 'red'}">${totalPct >= 0 ? '+' : ''}${fmtNum(totalPct)}%</div><div class="stat-label">Return</div></div>` : ''}
+      ${closedTrades.length > 0 ? `<div class="stat"><div class="stat-val" style="color:var(--muted)">${wins}W / ${losses}L</div><div class="stat-label">Record</div></div>` : ''}
+    </div>`;
+
+  const gateRulesHtml = (day.gate_rules || [])
+    .map(r => `<span class="gate-rule">${r}</span>`)
+    .join('');
+
+  const noteHtml = day.note
+    ? `<div class="day-note">ℹ ${day.note}</div>`
+    : '';
+
+  const tradeCards = candidates.filter(c => c.decision === 'TRADE').map(renderCard).join('');
+  const skipCards = candidates.filter(c => c.decision === 'SKIP').map(renderCard).join('');
+
+  return `
+    <div class="day-header">
+      <div class="day-date">${dateStr}</div>
+      <div class="day-meta">
+        <span class="meta-tag">Universe: <span>${day.universe}</span></span>
+        <span class="meta-tag">Strategy: <span>${day.strategy}</span></span>
+      </div>
+      ${statsHtml}
+      ${noteHtml}
+    </div>
+
+    <div class="gate-section">
+      <div class="section-title">Gate Rules</div>
+      <div class="gate-rules">${gateRulesHtml}</div>
+    </div>
+
+    ${tradeCards ? `<div class="divider">Trades</div>${tradeCards}` : ''}
+    ${skipCards ? `<div class="divider">Skipped</div>${skipCards}` : ''}
+  `;
+}
+
+async function init() {
+  const dates = await loadManifest();
+  const dateList = document.getElementById('dateList');
+  const main = document.getElementById('main');
+
+  dates.forEach((date, i) => {
+    const item = document.createElement('div');
+    item.className = 'date-item' + (i === 0 ? ' active' : '');
+    item.textContent = date;
+    item.addEventListener('click', async () => {
+      document.querySelectorAll('.date-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+      main.innerHTML = '<div class="loading">Loading...</div>';
+      const day = await loadDay(date);
+      main.innerHTML = renderDay(day);
+    });
+    dateList.appendChild(item);
+  });
+
+  if (dates.length > 0) {
+    const day = await loadDay(dates[0]);
+    main.innerHTML = renderDay(day);
+  }
+}
+
+checkAuth().then(() => init()).catch(e => {
+  document.getElementById('main').innerHTML = '<div class="loading">Error: ' + e.message + '</div>';
+});
+</script>
+</body>
+</html>
