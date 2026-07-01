@@ -568,14 +568,27 @@ function renderDay(day) {
   const wins = closedTrades.filter(c => c.trade.pnl > 0).length;
   const losses = closedTrades.filter(c => c.trade.pnl <= 0).length;
 
+  const pnlStr = totalPnl != null
+    ? `<span style="color:${totalPnl >= 0 ? 'var(--green)' : 'var(--red)'}">$${totalPnl >= 0 ? '+' : ''}${fmtNum(totalPnl)}</span>`
+    : `<span style="color:var(--muted)">—</span>`;
+
+  const pctColor = totalPct != null ? (totalPct >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)';
+  const pctStr = totalPct != null
+    ? `<span style="color:${pctColor}">${totalPct >= 0 ? '+' : ''}${fmtNum(totalPct)}%</span>`
+    : `<span style="color:var(--muted)">—</span>`;
+
+  const recordStr = closedTrades.length > 0
+    ? `${wins}W / ${losses}L`
+    : `<span style="color:var(--muted)">—</span>`;
+
   const statsHtml = `
     <div class="day-stats">
       <div class="stat"><div class="stat-val blue">${candidates.length}</div><div class="stat-label">Scanned</div></div>
       <div class="stat"><div class="stat-val green">${gatePass.length}</div><div class="stat-label">Traded</div></div>
       <div class="stat"><div class="stat-val red">${gateSkipped}</div><div class="stat-label">Skipped</div></div>
-      ${totalPnl != null ? `<div class="stat"><div class="stat-val ${totalPnl >= 0 ? 'green' : 'red'}">${totalPnl >= 0 ? '+' : ''}$${fmtNum(totalPnl)}</div><div class="stat-label">Day P&L</div></div>` : ''}
-      ${totalPct != null ? `<div class="stat"><div class="stat-val ${totalPct >= 0 ? 'green' : 'red'}">${totalPct >= 0 ? '+' : ''}${fmtNum(totalPct)}%</div><div class="stat-label">Return</div></div>` : ''}
-      ${closedTrades.length > 0 ? `<div class="stat"><div class="stat-val" style="color:var(--muted)">${wins}W / ${losses}L</div><div class="stat-label">Record</div></div>` : ''}
+      <div class="stat"><div class="stat-val">${pnlStr}</div><div class="stat-label">Day P&L</div></div>
+      <div class="stat"><div class="stat-val">${pctStr}</div><div class="stat-label">Return %</div></div>
+      <div class="stat"><div class="stat-val">${recordStr}</div><div class="stat-label">Record</div></div>
     </div>`;
 
   const gateRulesHtml = (day.gate_rules || [])
